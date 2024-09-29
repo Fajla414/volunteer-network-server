@@ -2,6 +2,7 @@ const express = require('express');
 const PORT = 5000;
 const cors = require('cors');
 const bodyParser = require('body-parser');
+const { initializeApp } = require('firebase-admin/app');
 require('dotenv').config();
 
 const app = express();
@@ -19,13 +20,26 @@ const client = new MongoClient(uri, {
     }
 });
 
+
+
+//Admin
+const admin = require("firebase-admin");
+
+const serviceAccount = require("./configs/volunteer-network-6351d-firebase-adminsdk-is1pp-175640f9c8.json");
+
+admin.initializeApp({
+    credential: admin.credential.cert(serviceAccount)
+});
+
+
+
 const run = async () => {
     try {
         await client.connect();
         const database = client.db(process.env.DB_NAME);
         const allDataCollection = database.collection('ALLDATA');
         const registeredVolunteerCollection = database.collection('registeredVolunteer');
-        
+
         //GET
         app.get('/', async (req, res) => {
             res.send('Hello World')
@@ -39,11 +53,32 @@ const run = async () => {
 
 
         app.get('/collection', async (req, res) => {
-            const queryEmail = req.query.email;
-            registeredVolunteerCollection.find({ email: queryEmail }).toArray()
-                .then(result => {
-                    res.send(result);
-                })
+            const bearer = req.headers.authorization;
+            if (bearer && bearer.startsWith('Bearer ')) {
+                const idToken = bearer.split(' ')[1];
+                admin.auth()
+                    .verifyIdToken(idToken)
+                    .then((decodedToken) => {
+                        const tokenEmail = decodedToken.email;
+                        const queryEmail = req.query.email;
+                        if (tokenEmail === queryEmail) {
+                            registeredVolunteerCollection.find({ email: queryEmail }).toArray()
+                                .then(result => {
+                                    res.send(result);
+                                })
+                        }
+                        else {
+                            res.status(401).send('Un-authorized access!')
+
+                        }
+                    })
+                    .catch((error) => {
+                        res.status(401).send('Un-authorized access!')
+                    });
+            }
+            else {
+                res.status(401).send('Un-authorized access!')
+            }
         })
 
 
@@ -70,7 +105,7 @@ const run = async () => {
             const findDeleteItem = registeredVolunteerCollection.find({ email: loggedUserEmail }).toArray().then(result => {
                 const findDeleteItemId = result.find(item => parseInt(item.id) === itemId);
                 registeredVolunteerCollection.deleteOne(findDeleteItemId).then(result => {
-                   res.send(result.deletedCount > 0)
+                    res.send(result.deletedCount > 0)
                 })
             })
         })
