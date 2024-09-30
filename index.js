@@ -89,6 +89,26 @@ const run = async () => {
             })
         })
 
+        app.get('/getItem/:id', async (req, res) => {
+            const reqId = req.params.id;
+            allDataCollection.find({ id: parseInt(reqId) }).toArray().then(result => {
+                res.send(result);
+            })
+        })
+
+        app.get('/adminCollection', async (req, res) => {
+            registeredVolunteerCollection.find({}).toArray().then(result => {
+                res.status(200).send(result);
+            })
+        })
+
+
+        app.get('/newVolunteerListId', async (req, res) => {
+            allDataCollection.find({}).toArray().then(result => {
+                res.send(result);
+            })
+        })
+
         //POST
         app.post(`/registeredVolunteer`, async (req, res) => {
             registeredVolunteerCollection.insertOne(req.body).then(result => {
@@ -96,6 +116,13 @@ const run = async () => {
             })
         })
 
+
+        app.post('/addNewVolunteerNetwork', async (req, res) => {
+            const addVolunteerNetwork = req.body;
+            allDataCollection.insertOne(addVolunteerNetwork).then(result => {
+                res.send(result.acknowledged === true);
+            })
+        })
 
 
         //DELETE
@@ -110,6 +137,14 @@ const run = async () => {
             })
         })
 
+        app.delete('/deleteListByAdmin/:id', async (req, res) => {
+            const id = req.params.id;
+            const findDeleteItem = registeredVolunteerCollection.find({ _id: new ObjectId(id) }).toArray().then(deleteItem => {
+                registeredVolunteerCollection.deleteOne(deleteItem[0]).then(result => {
+                    res.send(result.deletedCount > 0)
+                })
+            })
+        })
 
 
 
